@@ -1,5 +1,6 @@
 import { help } from '@/game/shell/help.ts'
-import { files } from '@/game/shell/files.ts'
+import { fs } from '@/game/shell/files.ts'
+import * as strings from '@/utils/strings.ts'
 
 type Output = string[]
 
@@ -14,7 +15,7 @@ interface Param {
 interface Flag {
   name: string
   description: string
-  params: Param[]
+  params?: Param[]
 }
 
 export interface Command {
@@ -35,7 +36,7 @@ interface ParamInput {
 interface FlagInput {
   name: string
   type: Flag
-  params: ParamInput[]
+  params?: ParamInput[]
 }
 
 export interface CommandInput {
@@ -59,7 +60,7 @@ export class StdErr extends Error {
 }
 
 export class Shell {
-  public commands: Command[] = [help, files]
+  public commands: Command[] = [help, fs]
 
   public process(raw: string): Output {
     if (!raw.trim()) {
@@ -107,6 +108,22 @@ export class Shell {
       (command ? command.name + ': ' : '') + firstLine,
       ...(additional?.slice(msg === undefined ? 1 : 0) ?? []),
     ]
+  }
+
+  public static getParam(
+    commandOrFlag: CommandInput | FlagInput,
+    name: string,
+  ): ParamInput {
+    return commandOrFlag.params!.find((p) =>
+      strings.equalsIgnoreCase(p.name, name),
+    )!
+  }
+
+  public static getFlag(
+    command: CommandInput,
+    name: string,
+  ): FlagInput | undefined {
+    return command.flags?.find((p) => strings.equalsIgnoreCase(p.name, name))
   }
 }
 
@@ -229,7 +246,9 @@ export class ShellParser {
       throw this.error('Malformed input: Command missing.')
     }
 
-    const found = this.allCommands.find((c) => c.name === this.parts[0])
+    const found = this.allCommands.find((c) =>
+      strings.equalsIgnoreCase(c.name, this.parts[0]),
+    )
     if (!found) {
       throw this.error(
         `Unknown command ${this.parts[0]}.`,
@@ -257,7 +276,9 @@ export class ShellParser {
 
   private parseFlag() {
     const input = this.previous.substring(2) // strip dashes
-    const found = this.command!.type.flags?.find((f) => f.name === input)
+    const found = this.command!.type.flags?.find((f) =>
+      strings.equalsIgnoreCase(f.name, input),
+    )
     if (!found) {
       throw this.error(`Unexpected flag --${input}.`)
     }
@@ -287,7 +308,9 @@ export class ShellParser {
     }
     this.advance()
 
-    const found = this.command!.type.subs?.find((s) => s.name === input)
+    const found = this.command!.type.subs?.find((s) =>
+      strings.equalsIgnoreCase(s.name, input),
+    )
     if (!found) {
       throw this.error(`Unexpected subcommand ${input}.`)
     }

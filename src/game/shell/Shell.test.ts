@@ -184,9 +184,14 @@ describe('ShellParser', () => {
       expect(parse('noargs', [noargs]).name).toBe('noargs')
     })
 
-    it('rejects empty input as an unknown command', () => {
+    it('rejects empty input as a missing command', () => {
       // Shell.process guards blank input; the parser itself has no command to find.
-      expect(() => parse('')).toThrow('Unknown command')
+      expect(() => parse('')).toThrow('Malformed input: Command missing.')
+    })
+
+    it('matches command names case-insensitively', () => {
+      expect(parse('NoArgs').name).toBe('noargs')
+      expect(parse('ADD 2 3').name).toBe('add')
     })
   })
 
@@ -194,6 +199,12 @@ describe('ShellParser', () => {
     it('navigates a single subcommand level', () => {
       const result = parse('net route list')
       expect(result.name).toBe('net')
+      expect(result.sub?.name).toBe('route')
+      expect(result.sub?.sub?.name).toBe('list')
+    })
+
+    it('matches subcommand names case-insensitively', () => {
+      const result = parse('net ROUTE List')
       expect(result.sub?.name).toBe('route')
       expect(result.sub?.sub?.name).toBe('list')
     })
@@ -293,6 +304,11 @@ describe('ShellParser', () => {
       const result = parse('cfg --level 3 7')
       const level = result.flags?.find((f) => f.name === 'level')
       expect(level?.params?.[0].value).toBe(3)
+    })
+
+    it('matches flag names case-insensitively', () => {
+      const result = parse('opt --VERBOSE')
+      expect(result.flags?.some((f) => f.name === 'verbose')).toBe(true)
     })
 
     it('throws on an unknown flag', () => {
