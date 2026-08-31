@@ -1,9 +1,9 @@
-import type { Command } from '@/game/shell/Shell.ts'
+import { type Command, StdErr } from '@/game/shell/Shell.ts'
 
 interface File {
   name: string
   parent: Directory
-  content: string
+  content: string[]
 }
 
 interface Directory {
@@ -27,7 +27,7 @@ class FileSystem {
     if (FileSystem.isDir(target)) {
       this.currentDir = target
     } else {
-      throw new Error(`${path}: Not a directory`)
+      throw new StdErr([`${path}: Not a directory`])
     }
   }
 
@@ -35,7 +35,7 @@ class FileSystem {
     return FileSystem.path(this.currentDir)
   }
 
-  private traverse(path: string): Resource {
+  public traverse(path: string): Resource {
     if (path.startsWith('/')) {
       return FileSystem.traverse(root, path.substring(1))
     } else {
@@ -48,7 +48,7 @@ class FileSystem {
 
     for (const next of path.split('/')) {
       if (!this.isDir(current)) {
-        throw new Error(`${this.path(current)}: Not a directory`)
+        throw new StdErr([`${this.path(current)}: Not a directory`])
       }
 
       if (next === '.') {
@@ -64,9 +64,9 @@ class FileSystem {
         if (res) {
           current = res
         } else {
-          throw new Error(
+          throw new StdErr([
             `${this.path(current)}/${next}: No such file or directory`,
-          )
+          ])
         }
       }
     }
@@ -81,11 +81,11 @@ class FileSystem {
     return `${this.path(res.parent)}/${res.name}`
   }
 
-  private static isDir(res: Resource): res is Directory {
+  public static isDir(res: Resource): res is Directory {
     return Object.hasOwn(res, 'children')
   }
 
-  private static isFile(res: Resource): res is File {
+  public static isFile(res: Resource): res is File {
     return Object.hasOwn(res, 'content')
   }
 }
@@ -101,9 +101,17 @@ export const files: Command = {
       description: 'List files/folders in the current directory',
       handler: () => {
         const list = fileSystem.currentDir.children
-        const names = list.map((l) => l.name)
-        names.sort()
-        return names
+        const files = list.filter((r) => FileSystem.isFile(r))
+        const dirs = list.filter((r) => FileSystem.isDir(r))
+        const fileNames = files.map((l) => l.name)
+        fileNames.sort()
+        const dirNames = dirs.map((l) => l.name)
+        dirNames.sort()
+        return [
+          '..',
+          ...dirNames,
+          ...(fileNames.length ? ['---', ...fileNames] : []),
+        ]
       },
     },
     {
@@ -116,8 +124,29 @@ export const files: Command = {
         },
       ],
       handler: (args) => {
-
-      }
+        const path = args.params![0].value as string
+        fileSystem.goto(path)
+        return []
+      },
+    },
+    {
+      name: 'read',
+      description: 'Read a file',
+      params: [
+        {
+          name: 'file',
+          type: 'string',
+        },
+      ],
+      handler: (args) => {
+        const path = args.params![0].value as string
+        const res = fileSystem.traverse(path)
+        if (FileSystem.isFile(res)) {
+          return res.content
+        } else {
+          throw new StdErr([`${path}: Not a file`])
+        }
+      },
     },
   ],
 }

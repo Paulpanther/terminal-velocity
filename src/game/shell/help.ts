@@ -3,5 +3,5 @@ import type { Command } from '@/game/shell/Shell.ts'
 export const help: Command = {
   name: 'help',
   description: 'Displays a list of available commands.',
-  handler: () => 'No help available',
+  handler: () => ['No help available'],
 }

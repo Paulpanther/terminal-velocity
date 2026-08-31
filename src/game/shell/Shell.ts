@@ -66,18 +66,47 @@ export class Shell {
       return ['']
     }
 
-    let input: CommandInput
+    let root: CommandInput
     try {
-      input = new ShellParser(raw, this.commands).parse()
+      root = new ShellParser(raw, this.commands).parse()
     } catch (e) {
       if (e instanceof StdErr) {
-        return [`${e.command ? e.command + ': ' : ''}Failed to parse`, ...e.msg]
+        return this.error('Failed to parse', e.command, e.msg)
       } else {
-        return ['Failed to parse', (e as Error).message]
+        return this.error('Failed to parse', undefined, [(e as Error).message])
       }
     }
+    const leaf = this.getLeaf(root)
 
-    // TODO
+    if (!leaf.type.handler) {
+      return this.error('Command is not executable', root)
+    }
+
+    try {
+      return leaf.type.handler(leaf)
+    } catch (e) {
+      if (e instanceof StdErr) {
+        return this.error(undefined, e.command ?? root, e.msg)
+      } else {
+        return this.error(undefined, root, [(e as Error).message])
+      }
+    }
+  }
+
+  private getLeaf(command: CommandInput): CommandInput {
+    return command.sub ? this.getLeaf(command.sub) : command
+  }
+
+  private error(
+    msg?: string,
+    command?: Command | CommandInput,
+    additional?: Output,
+  ): Output {
+    const firstLine = msg ?? additional?.[0] ?? 'Error'
+    return [
+      (command ? command.name + ': ' : '') + firstLine,
+      ...(additional?.slice(msg === undefined ? 1 : 0) ?? []),
+    ]
   }
 }
 
@@ -85,6 +114,7 @@ export class Shell {
  * input := command+ (param | (flag param*))*
  *
  * rules:
+ * - last sub must be a leaf
  * - all params of the final sub command must be present
  * - all params of a flag must be present
  * - flags are optional
@@ -93,7 +123,7 @@ export class Shell {
  * - params of flags MUST directly follow its flags
  * - flags start with --
  */
-class ShellParser {
+export class ShellParser {
   private readonly input: string
   private readonly allCommands: Command[]
   private parts: string[] = []
@@ -112,8 +142,8 @@ class ShellParser {
     this.findRoot()
 
     // first all subs
-    while (!this.isEnd) {
-      this.parseSub() // will return if not sub
+    while (!this.isEnd && this.parseSub()) {
+      //
     }
 
     // then all flags + params
@@ -128,7 +158,9 @@ class ShellParser {
       const missing = this.command!.type.params!.slice(
         this.command!.params?.length,
       )
-      throw this.error(`Missing param(s) ${missing.join(', ')}`)
+      throw this.error(
+        `Missing param(s) ${missing.map((p) => p.name).join(', ')}`,
+      )
     }
 
     if (!this.isEnd) {
@@ -145,6 +177,7 @@ class ShellParser {
    */
   private scan() {
     let currentPart = ''
+    let lastWasQuote = false
     let quote = false
     let escaped = false
 
@@ -159,13 +192,12 @@ class ShellParser {
 
       if (next === '"') {
         if (quote) {
-          // push even if currentPart == ''
-          this.parts.push(currentPart)
-          currentPart = ''
+          lastWasQuote = true
         }
         quote = !quote
+        continue
       } else if (!quote && [' ', '\t', '\n'].includes(next)) {
-        if (currentPart) {
+        if (currentPart || lastWasQuote) {
           this.parts.push(currentPart)
           currentPart = ''
         }
@@ -174,6 +206,8 @@ class ShellParser {
       } else {
         currentPart += next
       }
+
+      lastWasQuote = false
     }
 
     if (quote) {
@@ -184,13 +218,13 @@ class ShellParser {
       throw this.error('Malformed input: Unterminated escape.')
     }
 
-    if (currentPart) {
+    if (currentPart || lastWasQuote) {
       this.parts.push(currentPart)
     }
   }
 
   private findRoot() {
-    if (!this.parts) {
+    if (!this.parts.length) {
       // shell should handle empty whitespace before this happens
       throw this.error('Malformed input: Command missing.')
     }
@@ -235,15 +269,21 @@ class ShellParser {
       params: found.params?.map((p) => this.parseFlagParam(p)),
     }
 
-    return flag
+    if (!this.command!.flags) {
+      this.command!.flags = []
+    }
+    this.command!.flags.push(flag)
   }
 
-  private parseSub() {
+  /**
+   * @return true if it parsed a sub, false if it stopped parsing subs
+   */
+  private parseSub(): boolean {
     const input = this.current
 
     if (input.startsWith('--') || this.command!.type.params) {
       // stop parsing subs, start parsing flags and params
-      return
+      return false
     }
     this.advance()
 
@@ -259,6 +299,8 @@ class ShellParser {
 
     this.command!.sub = sub
     this.command = sub
+
+    return true
   }
 
   private parseParam() {
@@ -302,7 +344,7 @@ class ShellParser {
       }
       return value
     } else {
-      return this.current
+      return this.previous
     }
   }
 
