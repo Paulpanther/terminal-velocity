@@ -1,6 +1,8 @@
 import { help } from '@/game/shell/help.ts'
 import { fs } from '@/game/shell/files.ts'
 import * as strings from '@/utils/strings.ts'
+import fuzzysort from 'fuzzysort'
+import { isEqual, uniqWith } from 'lodash'
 
 type Output = string[]
 
@@ -59,24 +61,45 @@ export class StdErr extends Error {
   }
 }
 
+interface Completion {
+  name: string
+  addition?: string
+  description: string
+  command?: Command
+  flag?: Flag
+  param?: Param
+}
+
 export class Shell {
   public commands: Command[] = [help, fs]
+
+  public complete(raw: string): Completion[] {
+    const parser = new ShellParser(raw, this.commands)
+    parser.parse()
+    const { completions } = parser
+
+    completions.sort((a, b) => {
+      if (a.command && !b.command) return -1
+      else if (!a.command && b.command) return 1
+      else if (a.param && !b.param) return -1
+      else if (!a.param && b.param) return 1
+      else return a.name.localeCompare(b.name)
+    })
+    return completions
+  }
 
   public process(raw: string): Output {
     if (!raw.trim()) {
       return ['']
     }
 
-    let root: CommandInput
-    try {
-      root = new ShellParser(raw, this.commands).parse()
-    } catch (e) {
-      if (e instanceof StdErr) {
-        return this.error('Failed to parse', e.command, e.msg)
-      } else {
-        return this.error('Failed to parse', undefined, [(e as Error).message])
-      }
+    const parser = new ShellParser(raw, this.commands)
+    parser.parse()
+    const { root, hadError } = parser
+    if (!root) {
+      return this.error('Failed to parse', hadError?.command, hadError?.msg)
     }
+
     const leaf = this.getLeaf(root)
 
     if (!leaf.type.handler) {
@@ -145,22 +168,50 @@ export class ShellParser {
   private readonly allCommands: Command[]
   private parts: string[] = []
   private index: number = 0
-  private root?: CommandInput
   private command?: CommandInput
   private paramIndex = 0
+
+  public root?: CommandInput
+  public hadError?: StdErr
+  public completions: Completion[] = []
 
   constructor(input: string, allCommands: Command[]) {
     this.input = input
     this.allCommands = allCommands
   }
 
-  public parse(): CommandInput {
+  public parse() {
+    try {
+      this._parse()
+    } catch (e) {
+      // StdErrs are already captured
+      if (e! instanceof StdErr && !this.hadError) {
+        this.hadError = this.error((e as Error).message)
+      }
+    }
+
+    if (this.command) {
+      this.completions = [
+        ...this.completions,
+        ...(this.command!.type.subs?.map((c) => this.commandToCompletion(c)) ??
+          []),
+        ...(this.command!.type.flags?.map((f) => this.flagToCompletion(f)) ??
+          []),
+        ...(this.command!.type.params?.map((p) => this.paramToCompletion(p)) ??
+          []),
+      ]
+    }
+
+    this.completions = uniqWith(this.completions, isEqual)
+  }
+
+  private _parse() {
     this.scan()
     this.findRoot()
 
     // first all subs
     while (!this.isEnd && this.parseSub()) {
-      //
+      // empty
     }
 
     // then all flags + params
@@ -183,8 +234,6 @@ export class ShellParser {
     if (!this.isEnd) {
       throw this.error('Unexpected input.')
     }
-
-    return this.root!
   }
 
   /**
@@ -228,11 +277,13 @@ export class ShellParser {
     }
 
     if (quote) {
-      throw this.error('Malformed input: Unterminated quote.')
+      // don't throw, only capture
+      this.error('Malformed input: Unterminated quote.')
     }
 
     if (escaped) {
-      throw this.error('Malformed input: Unterminated escape.')
+      // don't throw, only capture
+      this.error('Malformed input: Unterminated escape.')
     }
 
     if (currentPart || lastWasQuote) {
@@ -243,6 +294,10 @@ export class ShellParser {
   private findRoot() {
     if (!this.parts.length) {
       // shell should handle empty whitespace before this happens
+      this.completions = [
+        ...this.completions,
+        ...this.allCommands.map((c) => this.commandToCompletion(c)),
+      ]
       throw this.error('Malformed input: Command missing.')
     }
 
@@ -250,6 +305,7 @@ export class ShellParser {
       strings.equalsIgnoreCase(c.name, this.parts[0]),
     )
     if (!found) {
+      this.addCompletionsFromCommands(this.parts[0], this.allCommands)
       throw this.error(
         `Unknown command ${this.parts[0]}.`,
         'Press tab for a list of available commands.',
@@ -280,6 +336,7 @@ export class ShellParser {
       strings.equalsIgnoreCase(f.name, input),
     )
     if (!found) {
+      this.addCompletionsFromFlags(input, this.command!.type.flags ?? [])
       throw this.error(`Unexpected flag --${input}.`)
     }
 
@@ -312,6 +369,9 @@ export class ShellParser {
       strings.equalsIgnoreCase(s.name, input),
     )
     if (!found) {
+      this.addCompletionsFromCommands(input, this.command!.type.subs ?? [])
+      this.addCompletionsFromFlags(input, this.command!.type.flags ?? [])
+      this.addCompletionsFromParams(input, this.command!.type.params ?? [])
       throw this.error(`Unexpected subcommand ${input}.`)
     }
 
@@ -331,6 +391,7 @@ export class ShellParser {
 
     const currentParam = this.command!.type.params?.[this.paramIndex]
     if (!currentParam) {
+      this.addCompletionsFromParams(input, this.command!.type.params ?? [])
       throw this.error(`Unexpected param ${input}.`)
     }
 
@@ -385,7 +446,7 @@ export class ShellParser {
 
   private get current() {
     if (this.isEnd) {
-      throw this.error(`Unexpected EOL at ${this.previous}.`)
+      this.error(`Unexpected EOL at ${this.previous}.`)
     }
 
     return this.parts[this.index]
@@ -395,10 +456,73 @@ export class ShellParser {
     return this.index === this.parts.length
   }
 
+  private addCompletionsFromCommands(input: string, commands: Command[]) {
+    this.addCompletionsFromOptions(
+      input,
+      commands.map((c) => [c.name, this.commandToCompletion(c)]),
+    )
+  }
+
+  private commandToCompletion(command: Flag): Completion {
+    return {
+      name: command.name,
+      description: command.description,
+      command,
+    }
+  }
+
+  private addCompletionsFromFlags(input: string, flags: Flag[]) {
+    this.addCompletionsFromOptions(
+      input,
+      flags.map((f) => [f.name, this.flagToCompletion(f)]),
+    )
+  }
+
+  private flagToCompletion(flag: Flag): Completion {
+    return {
+      name: flag.name,
+      description: flag.description,
+      flag,
+    }
+  }
+
+  private addCompletionsFromParams(input: string, params: Param[]) {
+    this.addCompletionsFromOptions(
+      input,
+      params.map((p) => [p.name, this.paramToCompletion(p)]),
+    )
+  }
+
+  private paramToCompletion(param: Param): Completion {
+    return {
+      name: param.name,
+      description: `<${param.type}>`,
+      param,
+    }
+  }
+
+  private addCompletionsFromOptions(
+    input: string,
+    options: [string, Completion][],
+  ) {
+    const results = fuzzysort.go(input, options, {
+      key: (option) => option[0],
+    })
+    this.completions = [
+      ...this.completions,
+      ...results.map((result) => result.obj[1]),
+    ]
+  }
+
   private error(...msg: string[]) {
     const parsedParts = this.parts.slice(0, this.index + 1)
     // TODO this will be replaced later with propper index indicator
-    return new StdErr([...msg, `at: ${parsedParts.join(' ')}`], this.root?.type)
+    const err = new StdErr(
+      [...msg, `at: ${parsedParts.join(' ')}`],
+      this.root?.type,
+    )
+    this.hadError = err
+    return err
   }
 }
 
