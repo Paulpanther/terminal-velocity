@@ -3,6 +3,7 @@ import { fs, type Resource } from '@/game/shell/files.ts'
 import * as strings from '@/utils/strings.ts'
 import fuzzysort from 'fuzzysort'
 import { isEqual, uniqWith } from 'lodash'
+import { ai } from '@/game/shell/ai.ts'
 
 type Output = string[]
 
@@ -26,7 +27,7 @@ export interface Command {
   subs?: Command[]
   flags?: Flag[]
   params?: Param[]
-  handler?: (args: CommandInput) => Output
+  handler?: (args: CommandInput) => Promise<Output>
 }
 
 interface ParamInput {
@@ -72,7 +73,7 @@ export interface Completion {
 }
 
 export class Shell {
-  public commands: Command[] = [help, fs]
+  public commands: Command[] = [help, fs, ai]
 
   public complete(raw: string): Completion[] {
     const parser = new ShellParser(raw, this.commands)
@@ -89,7 +90,7 @@ export class Shell {
     return completions
   }
 
-  public process(raw: string): Output {
+  public async process(raw: string): Promise<Output> {
     if (!raw.trim()) {
       return ['']
     }
@@ -108,7 +109,7 @@ export class Shell {
     }
 
     try {
-      return leaf.type.handler(leaf)
+      return await leaf.type.handler(leaf)
     } catch (e) {
       if (e instanceof StdErr) {
         return this.error(undefined, e.command ?? root, e.msg)

@@ -255,7 +255,7 @@ export class FileSystem {
 
 export const fileSystem = new FileSystem()
 
-export const buildFs = (fs: FileSystem) =>
+export const buildFs = async (fs: FileSystem) =>
   ({
     name: 'fs',
     description: 'Interact with the file system',
@@ -263,7 +263,7 @@ export const buildFs = (fs: FileSystem) =>
       {
         name: 'list',
         description: 'List files/folders in the current directory',
-        handler: () => {
+        handler: async () => {
           const list = fs.currentDir.children
           const files = list.filter((r) => FileSystem.isFile(r))
           const dirs = list.filter((r) => FileSystem.isDir(r))
@@ -288,7 +288,7 @@ export const buildFs = (fs: FileSystem) =>
             type: 'string',
           },
         ],
-        handler: (args) => {
+        handler: async (args) => {
           const path = Shell.getParam(args, 'path').value as string
           fs.goto(fs.path(path))
           return []
@@ -303,7 +303,7 @@ export const buildFs = (fs: FileSystem) =>
             type: 'string',
           },
         ],
-        handler: (args) => {
+        handler: async (args) => {
           const path = Shell.getParam(args, 'path').value as string
           const res = fs.traverse(fs.path(path))
           if (FileSystem.isFile(res)) {
@@ -328,7 +328,7 @@ export const buildFs = (fs: FileSystem) =>
             description: 'Go to the directory',
           },
         ],
-        handler: (args) => {
+        handler: async (args) => {
           const path = Shell.getParam(args, 'path').value as string
           fs.createDir(fs.path(path))
           if (Shell.getFlag(args, 'go')) {
@@ -357,7 +357,7 @@ export const buildFs = (fs: FileSystem) =>
             description: 'Overwrite content',
           },
         ],
-        handler: (args) => {
+        handler: async (args) => {
           const path = Shell.getParam(args, 'path').value as string
           const content = Shell.getParam(args, 'content').value as string
           const overwrite = !!Shell.getFlag(args, 'overwrite')

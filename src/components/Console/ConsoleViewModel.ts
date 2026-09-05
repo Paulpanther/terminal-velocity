@@ -9,12 +9,12 @@ export class ConsoleViewModel {
   @observable accessor currentPath: string = ''
 
   @action
-  public submit() {
+  public async submit() {
     if (!this.input) {
       return
     }
 
-    const output = shell.process(this.input)
+    const output = await shell.process(this.input)
 
     this.lines.push(`> ${this.input}`)
     this.lines.push(...output)
