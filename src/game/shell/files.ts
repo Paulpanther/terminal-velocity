@@ -12,7 +12,7 @@ interface Directory {
   children: Resource[]
 }
 
-type Resource = File | Directory
+export type Resource = File | Directory
 
 export class Path {
   private readonly values: string[]

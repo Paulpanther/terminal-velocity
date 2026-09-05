@@ -1,13 +1,13 @@
 import { help } from '@/game/shell/help.ts'
-import { fs } from '@/game/shell/files.ts'
+import { fs, type Resource } from '@/game/shell/files.ts'
 import * as strings from '@/utils/strings.ts'
 import fuzzysort from 'fuzzysort'
 import { isEqual, uniqWith } from 'lodash'
 
 type Output = string[]
 
-type Value = string | number
-type ValueType = 'string' | 'number'
+type Value = string | number | Resource
+type ValueType = 'string' | 'number' | 'resource'
 
 interface Param {
   name: string
@@ -32,7 +32,7 @@ export interface Command {
 interface ParamInput {
   name: string
   type: Param
-  value: string | number | boolean
+  value: Value
 }
 
 interface FlagInput {
