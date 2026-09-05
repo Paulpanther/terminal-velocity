@@ -191,6 +191,7 @@ export class ShellParser {
     }
 
     if (this.command) {
+      // greedy add all possibilities here (might be duplicate)
       this.completions = [
         ...this.completions,
         ...(this.command!.type.subs?.map((c) => this.commandToCompletion(c)) ??
@@ -200,6 +201,14 @@ export class ShellParser {
         ...(this.command!.type.params?.map((p) => this.paramToCompletion(p)) ??
           []),
       ]
+
+      // remove already used flags/params
+      this.removeCompletions(
+        (this.command!.params ?? []).map((p) => this.paramToCompletion(p.type)),
+      )
+      this.removeCompletions(
+        (this.command!.flags ?? []).map((p) => this.flagToCompletion(p.type)),
+      )
     }
 
     this.completions = uniqWith(this.completions, isEqual)
@@ -514,6 +523,12 @@ export class ShellParser {
     ]
   }
 
+  private removeCompletions(completions: Completion[]) {
+    this.completions = this.completions.filter(
+      (c) => !completions.some((r) => isEqual(c, r)),
+    )
+  }
+
   private error(...msg: string[]) {
     const parsedParts = this.parts.slice(0, this.index + 1)
     // TODO this will be replaced later with propper index indicator
@@ -521,7 +536,9 @@ export class ShellParser {
       [...msg, `at: ${parsedParts.join(' ')}`],
       this.root?.type,
     )
-    this.hadError = err
+    if (!this.hadError) {
+      this.hadError = err
+    }
     return err
   }
 }
