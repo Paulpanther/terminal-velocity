@@ -13,6 +13,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "fuzzysort": "^4.0.2",
     "lodash": "^4.18.1",
