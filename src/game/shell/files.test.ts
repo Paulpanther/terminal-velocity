@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildFs, FileSystem, Path } from '@/game/shell/files.ts'
+import { buildFs, FileSystem, Path, type Resource } from '@/game/shell/files.ts'
 import { Shell, StdErr } from '@/game/shell/Shell.ts'
 
 /*
@@ -17,7 +17,7 @@ import { Shell, StdErr } from '@/game/shell/Shell.ts'
 
 // Fresh, isolated state per test — `traverse` resolves from `currentDir`, so a
 // brand-new root dir gives each test its own tree.
-const makeRoot = () => ({ name: '', children: [] as any[] })
+const makeRoot = () => ({ name: '', children: [] as Resource[] })
 const makeFs = () => new FileSystem(makeRoot())
 
 // A throwaway shell wired only to this fs's command, for end-to-end tests.
@@ -199,7 +199,7 @@ describe('FileSystem', () => {
 
     it('appends to an existing file by default', () => {
       const root = makeRoot()
-      const d = { name: 'd', parent: root, children: [] as any[] }
+      const d = { name: 'd', parent: root, children: [] as Resource[] }
       const file = { name: 'f.txt', parent: d, content: ['a'] }
       d.children.push(file)
       root.children.push(d)
@@ -210,7 +210,7 @@ describe('FileSystem', () => {
 
     it('replaces content with the overwrite flag', () => {
       const root = makeRoot()
-      const d = { name: 'd', parent: root, children: [] as any[] }
+      const d = { name: 'd', parent: root, children: [] as Resource[] }
       const file = { name: 'f.txt', parent: d, content: ['a'] }
       d.children.push(file)
       root.children.push(d)
@@ -221,8 +221,8 @@ describe('FileSystem', () => {
 
     it('throws "Not a file" when writing over a directory', () => {
       const root = makeRoot()
-      const p = { name: 'p', parent: root, children: [] as any[] }
-      p.children.push({ name: 'd', parent: p, children: [] as any[] })
+      const p = { name: 'p', parent: root, children: [] as Resource[] }
+      p.children.push({ name: 'd', parent: p, children: [] as Resource[] })
       root.children.push(p)
       const fs = new FileSystem(root)
       const e = err(() => fs.writeFile(new Path('p', 'd'), ['x'], false, true))
