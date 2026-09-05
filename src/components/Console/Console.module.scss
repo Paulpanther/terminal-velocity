@@ -11,9 +11,82 @@
   }
 
   .input {
+    position: relative;
     background: #333;
-    border: none;
-    outline: none;
-    color: #fff;
+
+    // Shared metrics — the textarea and overlay MUST match exactly or the
+    // (transparent) caret drifts off the visible characters.
+    .textarea,
+    .overlay {
+      font: inherit;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      letter-spacing: normal;
+      tab-size: 4;
+
+      margin: 0;
+      padding: 8px;
+      border: 0;
+      box-sizing: border-box;
+      width: 100%;
+
+      // wrapping must be identical on both elements
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    // The real input: on top, invisible glyphs, but a visible caret.
+    .textarea {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+
+      color: transparent;
+      background: transparent;
+      caret-color: #fff;
+      resize: none;
+      outline: none;
+      overflow: hidden; // height comes from the overlay, so never scroll
+
+      &::selection {
+        background: rgba(255, 255, 255, 0.25);
+      }
+    }
+
+    // The styled mirror: underneath, defines the box height, ignores pointers.
+    .overlay {
+      position: relative;
+      z-index: 0;
+      color: #fff;
+      pointer-events: none;
+      user-select: none;
+      min-height: 1.5em; // keep a line of height when empty
+
+      .prefix {
+        color: #5a9;
+        white-space: pre; // keep the prefix on one line; text-indent matches it
+      }
+
+      .inlineCompletion {
+        color: #888
+      }
+    }
+  }
+
+  .completions {
+    display: grid;
+    grid-template-columns: min-content 1fr;
+    column-gap: 50px;
+    margin-top: 5px;
+
+    .completionName {
+      text-wrap: nowrap;
+    }
+
+    .completionDescription {
+      font-style: italic;
+    }
   }
 }

@@ -61,10 +61,11 @@ export class StdErr extends Error {
   }
 }
 
-interface Completion {
+export interface Completion {
   name: string
   addition?: string
   description: string
+  complete?: string
   command?: Command
   flag?: Flag
   param?: Param
@@ -170,6 +171,7 @@ export class ShellParser {
   private index: number = 0
   private command?: CommandInput
   private paramIndex = 0
+  private incomplete = false
 
   public root?: CommandInput
   public hadError?: StdErr
@@ -190,7 +192,7 @@ export class ShellParser {
       }
     }
 
-    if (this.command) {
+    if (this.command && !this.incomplete) {
       // greedy add all possibilities here (might be duplicate)
       this.completions = [
         ...this.completions,
@@ -332,7 +334,7 @@ export class ShellParser {
 
   private parseFlagOrParam() {
     const next = this.advance()
-    if (next.startsWith('--')) {
+    if (next.startsWith('-')) {
       this.parseFlag()
     } else {
       this.parseParam()
@@ -340,12 +342,24 @@ export class ShellParser {
   }
 
   private parseFlag() {
+    const full = this.previous.startsWith('--')
+    if (!full) {
+      this.addCompletionsFromFlags(
+        this.previous.substring(1),
+        this.command!.type.flags ?? [],
+        '-',
+      )
+      this.incomplete = true
+      throw this.error(`Incomplete flag`)
+    }
+
     const input = this.previous.substring(2) // strip dashes
     const found = this.command!.type.flags?.find((f) =>
       strings.equalsIgnoreCase(f.name, input),
     )
     if (!found) {
       this.addCompletionsFromFlags(input, this.command!.type.flags ?? [])
+      this.incomplete = true
       throw this.error(`Unexpected flag --${input}.`)
     }
 
@@ -379,8 +393,7 @@ export class ShellParser {
     )
     if (!found) {
       this.addCompletionsFromCommands(input, this.command!.type.subs ?? [])
-      this.addCompletionsFromFlags(input, this.command!.type.flags ?? [])
-      this.addCompletionsFromParams(input, this.command!.type.params ?? [])
+      this.incomplete = true
       throw this.error(`Unexpected subcommand ${input}.`)
     }
 
@@ -401,6 +414,7 @@ export class ShellParser {
     const currentParam = this.command!.type.params?.[this.paramIndex]
     if (!currentParam) {
       this.addCompletionsFromParams(input, this.command!.type.params ?? [])
+      this.incomplete = true
       throw this.error(`Unexpected param ${input}.`)
     }
 
@@ -480,10 +494,15 @@ export class ShellParser {
     }
   }
 
-  private addCompletionsFromFlags(input: string, flags: Flag[]) {
+  private addCompletionsFromFlags(
+    input: string,
+    flags: Flag[],
+    prefix?: string,
+  ) {
     this.addCompletionsFromOptions(
       input,
       flags.map((f) => [f.name, this.flagToCompletion(f)]),
+      prefix,
     )
   }
 
@@ -513,13 +532,24 @@ export class ShellParser {
   private addCompletionsFromOptions(
     input: string,
     options: [string, Completion][],
+    prefix?: string,
   ) {
     const results = fuzzysort.go(input, options, {
       key: (option) => option[0],
     })
     this.completions = [
       ...this.completions,
-      ...results.map((result) => result.obj[1]),
+      ...results.map((result) => {
+        const completion = result.obj[1]
+        const complete =
+          !completion.param && completion.name.startsWith(input)
+            ? (prefix ?? '') + completion.name.substring(input.length)
+            : undefined
+        return {
+          ...completion,
+          complete,
+        }
+      }),
     ]
   }
 
