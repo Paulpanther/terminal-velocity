@@ -2,6 +2,10 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
+ARG VITE_AI_URL
+ARG VITE_AI_KEY
+ARG VITE_AI_MODEL
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
