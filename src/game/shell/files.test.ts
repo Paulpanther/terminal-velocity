@@ -282,79 +282,79 @@ describe('FileSystem', () => {
 })
 
 describe('fs command (integration)', () => {
-  it('lists just ".." for an empty root', () => {
+  it('lists just ".." for an empty root', async () => {
     const s = makeShell(makeFs())
-    expect(s.process('fs list')).toEqual(['..'])
+    expect(await s.process('fs list')).toEqual(['..'])
   })
 
-  it('shows a newly created directory in the listing', () => {
+  it('shows a newly created directory in the listing', async () => {
     const s = makeShell(makeFs())
-    s.process('fs mkdir foo')
-    const out = s.process('fs list')
+    await s.process('fs mkdir foo')
+    const out = await s.process('fs list')
     expect(out).toContain('foo')
   })
 
-  it('moves into a directory created with --go', () => {
+  it('moves into a directory created with --go', async () => {
     const fs = makeFs()
     const s = makeShell(fs)
-    s.process('fs mkdir foo --go')
+    await s.process('fs mkdir foo --go')
     expect(fs.currentDir.name).toBe('foo')
   })
 
-  it('reads back a file that was written', () => {
+  it('reads back a file that was written', async () => {
     const s = makeShell(makeFs())
-    s.process('fs write a.txt hello')
-    expect(s.process('fs read a.txt')).toEqual(['hello'])
+    await s.process('fs write a.txt hello')
+    expect(await s.process('fs read a.txt')).toEqual(['hello'])
   })
 
-  it('appends to a file by default on repeated writes', () => {
+  it('appends to a file by default on repeated writes', async () => {
     const s = makeShell(makeFs())
-    s.process('fs write a.txt one')
-    s.process('fs write a.txt two')
-    expect(s.process('fs read a.txt')).toEqual(['one', 'two'])
+    await s.process('fs write a.txt one')
+    await s.process('fs write a.txt two')
+    expect(await s.process('fs read a.txt')).toEqual(['one', 'two'])
   })
 
-  it('overwrites content with --overwrite', () => {
+  it('overwrites content with --overwrite', async () => {
     const s = makeShell(makeFs())
-    s.process('fs write a.txt one')
-    s.process('fs write a.txt two --overwrite')
-    expect(s.process('fs read a.txt')).toEqual(['two'])
+    await s.process('fs write a.txt one')
+    await s.process('fs write a.txt two --overwrite')
+    expect(await s.process('fs read a.txt')).toEqual(['two'])
   })
 
-  it('splits multi-line content into separate lines', () => {
+  it('splits multi-line content into separate lines', async () => {
     const s = makeShell(makeFs())
-    s.process('fs write a.txt "line1\nline2"')
-    expect(s.process('fs read a.txt')).toEqual(['line1', 'line2'])
+    await s.process('fs write a.txt "line1\nline2"')
+    expect(await s.process('fs read a.txt')).toEqual(['line1', 'line2'])
   })
 
-  it('navigates with an absolute path', () => {
+  it('navigates with an absolute path', async () => {
     const s = makeShell(makeFs())
-    s.process('fs mkdir a/b')
-    s.process('fs go /a/b')
-    s.process('fs mkdir c')
-    expect(s.process('fs list')).toContain('c')
+    await s.process('fs mkdir a/b')
+    await s.process('fs go /a/b')
+    await s.process('fs mkdir c')
+    expect(await s.process('fs list')).toContain('c')
   })
 
-  it('errors "Not a file" when reading a directory', () => {
+  it('errors "Not a file" when reading a directory', async () => {
     const s = makeShell(makeFs())
-    s.process('fs mkdir d')
-    expect(s.process('fs read d').join(' ')).toContain('Not a file')
+    await s.process('fs mkdir d')
+    expect((await s.process('fs read d')).join(' ')).toContain('Not a file')
   })
 
-  it('errors "No such file or directory" when going to a missing path', () => {
+  it('errors "No such file or directory" when going to a missing path', async () => {
     const s = makeShell(makeFs())
-    expect(s.process('fs go nope').join(' ')).toContain(
+    expect((await s.process('fs go nope')).join(' ')).toContain(
       'No such file or directory',
     )
   })
 
-  it('does not crash going up from the root', () => {
+  it('does not crash going up from the root', async () => {
     const s = makeShell(makeFs())
-    expect(s.process('fs go ..')).toEqual([])
+    expect(await s.process('fs go ..')).toEqual([])
   })
 
-  it('goes to the root with an absolute "/"', () => {
+  it('goes to the root with an absolute "/"', async () => {
     const s = makeShell(makeFs())
-    expect(s.process('fs go /')).toEqual([])
+    expect(await s.process('fs go /')).toEqual([])
   })
 })

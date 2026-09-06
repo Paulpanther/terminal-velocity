@@ -255,7 +255,7 @@ export class FileSystem {
 
 export const fileSystem = new FileSystem()
 
-export const buildFs = async (fs: FileSystem) =>
+export const buildFs = (fs: FileSystem) =>
   ({
     name: 'fs',
     description: 'Interact with the file system',
