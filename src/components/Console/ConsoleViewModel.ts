@@ -18,6 +18,8 @@ export class ConsoleViewModel {
     this.lines.push(`> ${this.input}`)
     this.lines.push(...output)
     this.input = ''
+
+    this.completions = shell.complete(this.input)
   }
 
   @action

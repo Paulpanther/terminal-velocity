@@ -27,6 +27,15 @@ const root: Directory = {
   children: [],
 }
 
+type ResourceSnapshot =
+  | { name: string; children: ResourceSnapshot[] }
+  | { name: string; content: string[] }
+
+interface FileSystemSnapshot {
+  root: ResourceSnapshot
+  currentPath: string
+}
+
 export class FileSystem extends State {
   public currentDir: Directory
   public root: Directory
@@ -177,6 +186,54 @@ export class FileSystem extends State {
 
   public static isFile(res: Resource): res is File {
     return Object.hasOwn(res, 'content')
+  }
+
+  public load(data: FileSystemSnapshot): void {
+    this.root = FileSystem.buildResourceFromSnapshot(data.root) as Directory
+    this.currentDir = this.root
+    const path = new Path().append(data.currentPath)
+    this.currentDir = this.traverse(path) as Directory
+  }
+
+  protected _save(): object {
+    return {
+      root: FileSystem.buildResourceSnapshot(this.root),
+      currentPath: this.currentPath.toString(),
+    } as FileSystemSnapshot
+  }
+
+  private static buildResourceFromSnapshot(
+    snap: ResourceSnapshot,
+    parent: Directory = { name: '', children: [] },
+  ): Resource {
+    if (Object.hasOwn(snap, 'children')) {
+      const next: Directory = {
+        name: snap.name,
+        parent,
+        children: [],
+      }
+      next.children = (snap as { children: ResourceSnapshot[] }).children.map(
+        (c) => this.buildResourceFromSnapshot(c, next),
+      )
+      return next
+    } else {
+      return {
+        name: snap.name,
+        parent,
+        content: (snap as { content: string[] }).content,
+      } as File
+    }
+  }
+
+  private static buildResourceSnapshot(res: Resource): ResourceSnapshot {
+    if (FileSystem.isFile(res)) {
+      return { name: res.name, content: res.content }
+    } else if (FileSystem.isDir(res)) {
+      return {
+        name: res.name,
+        children: res.children.map((c) => this.buildResourceSnapshot(c)),
+      }
+    } else throw new Error('Unreachable')
   }
 }
 

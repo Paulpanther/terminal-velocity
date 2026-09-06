@@ -24,9 +24,7 @@ const makeFs = () => new FileSystem(makeRoot())
 
 // A throwaway shell wired only to this fs's command, for end-to-end tests.
 const makeShell = (fs: FileSystem) => {
-  const s = new Shell()
-  s.commands = [buildFs(fs)]
-  return s
+  return new Shell([buildFs(fs)])
 }
 
 /** Run a call and return the thrown StdErr, failing if nothing (or something else) is thrown. */

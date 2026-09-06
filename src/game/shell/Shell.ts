@@ -74,7 +74,13 @@ export interface Completion {
 }
 
 export class Shell {
-  public readonly commands: Command[] = [help, fs, ai]
+  public readonly commands: Command[]
+
+  // Defaults to the real command set; tests pass a throwaway set instead of
+  // reassigning `commands`, which is readonly.
+  public constructor(commands: Command[] = [help, fs, ai]) {
+    this.commands = commands
+  }
 
   public complete(raw: string): Completion[] {
     const parser = new ShellParser(raw, this.commands)
