@@ -1,12 +1,11 @@
-import { action, observable } from 'mobx'
+import { action, computed, observable } from 'mobx'
 import { type Completion, shell } from '@/game/shell/Shell.ts'
-import { fileSystem } from '@/game/shell/files.ts'
+import { fileSystem } from '@/game/shell/files/FileSystem.ts'
 
 export class ConsoleViewModel {
   @observable accessor lines: string[] = ['Console initialized']
   @observable accessor input: string = ''
   @observable accessor completions: Completion[] = []
-  @observable accessor currentPath: string = ''
 
   @action
   public async submit() {
@@ -19,8 +18,6 @@ export class ConsoleViewModel {
     this.lines.push(`> ${this.input}`)
     this.lines.push(...output)
     this.input = ''
-
-    this.currentPath = fileSystem.currentPath.toString()
   }
 
   @action
@@ -56,5 +53,10 @@ export class ConsoleViewModel {
     } else {
       return ' ' + completion.name
     }
+  }
+
+  @computed
+  public get currentPath() {
+    return fileSystem.currentPath.toString()
   }
 }

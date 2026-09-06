@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { buildFs, FileSystem, Path, type Resource } from '@/game/shell/files.ts'
+import { buildFs } from '@/game/shell/files/files.ts'
+import { FileSystem, type Resource } from '@/game/shell/files/FileSystem.ts'
+import { Path } from '@/game/shell/files/Path.ts'
 import { Shell, StdErr } from '@/game/shell/Shell.ts'
 
 /*

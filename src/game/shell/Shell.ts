@@ -1,5 +1,6 @@
 import { help } from '@/game/shell/help.ts'
-import { fs, type Resource } from '@/game/shell/files.ts'
+import { type Resource } from '@/game/shell/files/FileSystem.ts'
+import { fs } from '@/game/shell/files/files.ts'
 import * as strings from '@/utils/strings.ts'
 import fuzzysort from 'fuzzysort'
 import { isEqual, uniqWith } from 'lodash'
@@ -73,7 +74,7 @@ export interface Completion {
 }
 
 export class Shell {
-  public commands: Command[] = [help, fs, ai]
+  public readonly commands: Command[] = [help, fs, ai]
 
   public complete(raw: string): Completion[] {
     const parser = new ShellParser(raw, this.commands)
