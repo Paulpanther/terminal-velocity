@@ -4,11 +4,10 @@ import App from '@/App'
 import '@/index.scss'
 import { persist } from '@/game/State.ts'
 import { fileSystem } from '@/game/shell/files/FileSystem.ts'
+import { shell } from '@/game/shell/Shell.ts'
 
-// Storage is wired up here, at the composition root, rather than where the
-// systems are defined — importing a system must not touch localStorage, so the
-// game modules stay importable from the (node-environment) test suite.
 persist(fileSystem)
+persist(shell)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

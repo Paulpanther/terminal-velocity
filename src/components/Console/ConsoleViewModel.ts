@@ -1,11 +1,17 @@
-import { action, computed, observable } from 'mobx'
-import { type Completion, shell } from '@/game/shell/Shell.ts'
+import { action, computed, observable, reaction } from 'mobx'
+import { shell } from '@/game/shell/Shell.ts'
 import { fileSystem } from '@/game/shell/files/FileSystem.ts'
 
 export class ConsoleViewModel {
-  @observable accessor lines: string[] = ['Console initialized']
   @observable accessor input: string = ''
-  @observable accessor completions: Completion[] = []
+
+  constructor() {
+    reaction(
+      () => this.input,
+      () => shell.complete(this.input),
+      { fireImmediately: true },
+    )
+  }
 
   @action
   public async submit() {
@@ -13,19 +19,13 @@ export class ConsoleViewModel {
       return
     }
 
-    const output = await shell.process(this.input)
-
-    this.lines.push(`> ${this.input}`)
-    this.lines.push(...output)
+    await shell.process(this.input)
     this.input = ''
-
-    this.completions = shell.complete(this.input)
   }
 
   @action
   public onInputChange(value: string) {
     this.input = value
-    this.completions = shell.complete(this.input)
   }
 
   @action
@@ -34,7 +34,6 @@ export class ConsoleViewModel {
     if (!complete) return
 
     this.input += complete
-    this.completions = shell.complete(this.input)
   }
 
   private getBestCompletion(): string | undefined {
@@ -55,6 +54,16 @@ export class ConsoleViewModel {
     } else {
       return ' ' + completion.name
     }
+  }
+
+  @computed
+  public get completions() {
+    return shell.completions
+  }
+
+  @computed
+  public get lines() {
+    return shell.lines
   }
 
   @computed
