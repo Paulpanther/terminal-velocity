@@ -1,16 +1,32 @@
-import { action, computed, observable, reaction } from 'mobx'
+import {
+  action,
+  computed,
+  type IReactionDisposer,
+  observable,
+  reaction,
+} from 'mobx'
 import { shell } from '@/game/shell/Shell.ts'
 import { fileSystem } from '@/game/shell/files/FileSystem.ts'
+import type { Cursor } from '@/utils/cursor.ts'
+import type { ViewModel } from '@/utils/types'
+import { TextAnimator } from '@/components/Console/TextAnimator.ts'
 
-export class ConsoleViewModel {
+export class ConsoleViewModel implements ViewModel {
   @observable accessor input: string = ''
+  @observable accessor animator = new TextAnimator(() => this.lines)
+  private completionReaction: IReactionDisposer | undefined
 
-  constructor() {
-    reaction(
+  public init() {
+    this.completionReaction ??= reaction(
       () => this.input,
       () => shell.complete(this.input),
       { fireImmediately: true },
     )
+  }
+
+  public dispose() {
+    this.completionReaction?.()
+    this.completionReaction = undefined
   }
 
   @action
@@ -19,8 +35,13 @@ export class ConsoleViewModel {
       return
     }
 
-    await shell.process(this.input)
+    const raw = this.input
+    // The echoed `> raw` line is written by the shell and is not animated.
+    const cursor: Cursor = { line: shell.lines.length + 1, offset: 0 }
     this.input = ''
+
+    await shell.process(raw)
+    this.animator.startAnimation(cursor)
   }
 
   @action

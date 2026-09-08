@@ -69,7 +69,7 @@ export const Console = observer(() => {
     // Enter submits; Shift+Enter inserts a newline.
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      vm.submit()
+      void vm.submit()
     }
     if (e.key === 'Tab') {
       e.preventDefault()
@@ -80,7 +80,7 @@ export const Console = observer(() => {
   return (
     <div className={styles.console}>
       <div className={styles.output}>
-        {vm.lines.map((l, i) => (
+        {vm.animator.animatedLines.map((l, i) => (
           <span key={i}>{l}</span>
         ))}
       </div>
