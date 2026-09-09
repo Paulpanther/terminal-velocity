@@ -1,5 +1,5 @@
 import { Path } from '@/game/shell/files/Path.ts'
-import { StdErr } from '@/game/shell/Shell.ts'
+import { StdErr } from '@/game/shell/ShellParser.ts'
 import { State } from '@/game/State.ts'
 
 interface File {

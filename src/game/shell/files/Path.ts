@@ -1,4 +1,4 @@
-import { StdErr } from '@/game/shell/Shell.ts'
+import { StdErr } from '@/game/shell/ShellParser.ts'
 
 export class Path {
   private readonly values: string[]

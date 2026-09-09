@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FileSystem, type Resource } from '@/game/shell/files/FileSystem.ts'
+import { FileSystem, type Resource } from '@/game/systems/FileSystem.ts'
 import { persist } from '@/game/State.ts'
 
 /*

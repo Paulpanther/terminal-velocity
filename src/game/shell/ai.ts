@@ -1,4 +1,4 @@
-import { type Command, Shell, StdErr } from '@/game/shell/Shell.ts'
+import { type Command, ShellParser, StdErr } from '@/game/shell/ShellParser.ts'
 
 const BASE_URL: string = import.meta.env.VITE_AI_URL
 const API_KEY: string = import.meta.env.VITE_AI_KEY
@@ -40,7 +40,7 @@ export const ai: Command = {
     },
   ],
   handler: async (args) => {
-    const message = Shell.getParam(args, 'message').value as string
+    const message = ShellParser.getParam(args, 'message').value as string
     return [await prompt([{ role: 'user', content: message }])]
   },
 }

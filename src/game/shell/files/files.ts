@@ -1,5 +1,5 @@
-import { FileSystem, fileSystem } from '@/game/shell/files/FileSystem.ts'
-import { type Command, Shell, StdErr } from '@/game/shell/Shell.ts'
+import { FileSystem, fileSystem } from '@/game/systems/FileSystem.ts'
+import { type Command, ShellParser, StdErr } from '@/game/shell/ShellParser.ts'
 
 export const buildFs = (fs: FileSystem) =>
   ({
@@ -35,7 +35,7 @@ export const buildFs = (fs: FileSystem) =>
           },
         ],
         handler: async (args) => {
-          const path = Shell.getParam(args, 'path').value as string
+          const path = ShellParser.getParam(args, 'path').value as string
           fs.goto(fs.path(path))
           return []
         },
@@ -50,7 +50,7 @@ export const buildFs = (fs: FileSystem) =>
           },
         ],
         handler: async (args) => {
-          const path = Shell.getParam(args, 'path').value as string
+          const path = ShellParser.getParam(args, 'path').value as string
           const res = fs.traverse(fs.path(path))
           if (FileSystem.isFile(res)) {
             return res.content
@@ -75,9 +75,9 @@ export const buildFs = (fs: FileSystem) =>
           },
         ],
         handler: async (args) => {
-          const path = Shell.getParam(args, 'path').value as string
+          const path = ShellParser.getParam(args, 'path').value as string
           fs.createDir(fs.path(path))
-          if (Shell.getFlag(args, 'go')) {
+          if (ShellParser.getFlag(args, 'go')) {
             fs.goto(fs.path(path))
           }
           return []
@@ -104,9 +104,9 @@ export const buildFs = (fs: FileSystem) =>
           },
         ],
         handler: async (args) => {
-          const path = Shell.getParam(args, 'path').value as string
-          const content = Shell.getParam(args, 'content').value as string
-          const overwrite = !!Shell.getFlag(args, 'overwrite')
+          const path = ShellParser.getParam(args, 'path').value as string
+          const content = ShellParser.getParam(args, 'content').value as string
+          const overwrite = !!ShellParser.getFlag(args, 'overwrite')
 
           fs.writeFile(
             fs.path(path),

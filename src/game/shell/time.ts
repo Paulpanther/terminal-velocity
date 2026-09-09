@@ -1,4 +1,4 @@
-import type { Command } from '@/game/shell/Shell.ts'
+import type { Command } from '@/game/shell/ShellParser.ts'
 import { State } from '@/game/State.ts'
 
 class TimeService extends State {
@@ -10,7 +10,7 @@ class TimeService extends State {
     return {}
   }
 
-  load(data: object): void {}
+  load(): void {}
 }
 
 export const timeService = new TimeService()

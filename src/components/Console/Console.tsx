@@ -3,7 +3,7 @@ import { useViewModel } from '@/hooks/useViewModel.ts'
 import * as React from 'react'
 import { observer } from 'mobx-react-lite'
 import styles from './Console.module.scss'
-import type { Completion } from '@/game/shell/Shell.ts'
+import type { Completion } from '@/game/shell/ShellParser.ts'
 
 // The plain-text prefix shown before the input. It is the single source of
 // truth for BOTH the rendered prefix (below) and the textarea's text-indent —

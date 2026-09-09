@@ -1,4 +1,4 @@
-import type { Command } from '@/game/shell/Shell.ts'
+import type { Command } from '@/game/shell/ShellParser.ts'
 
 export const track: Command = {
   name: 'track',
